@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeakRetail Ltd: Branch Network Deployment</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23050505'/><text x='50' y='68' font-family='monospace' font-size='48' font-weight='bold' fill='%2300ff41' text-anchor='middle'>OZI</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+
+<script>
+
+  /*
+  ==============================================================
+  YOUR PROJECT DETAILS -- EDIT THIS SECTION ONLY
+  ==============================================================
+  Everything you need to fill in is marked with REPLACE.
+  DO NOT edit anything below the closing comment block.
+  ==============================================================
+  */
+
+  const PROJECT = {
+
+    title:    "PeakRetail Ltd: Branch Network Deployment",
+    category: "networking",
+    status:   "live",
+    author:   "Ozioma Inya",       // REPLACE with your name
+    date:     "August, 2025",          // REPLACE e.g. "March, 2025"
+
+    overview: "A complete network infrastructure built and deployed for a new PeakRetail Ltd branch office from scratch. The branch network uses two VLANs (Sales and Management), inter-VLAN routing on the branch router, per-VLAN DHCP pools, a WAN link to headquarters, SSH for secure remote management, and full ICMP verification. Completed as part of the Cisco Networking Academy Junior Cybersecurity Analyst career path.",
+
+    client: {
+      name:     "PeakRetail Ltd",
+      industry: "Retail",
+      site:     "New branch office: 25 staff across Sales and Management departments",
+      task:     "Deploy, configure, and verify the branch network from scratch before opening day",
+      context:  "HQ has designed the network on paper. You are the on-site network engineer responsible for bringing it online. The branch must connect to HQ via WAN, segment staff into two VLANs, and be remotely manageable via SSH from HQ.",
+    },
+
+    objectives: [
+      "Document the hierarchical network design and justify device placement at each layer",
+      "Explain how cloud and virtualisation technologies could extend or support the branch network",
+      "Apply binary and hexadecimal number systems to design the IPv4 addressing scheme",
+      "Configure VLANs on the branch switch and verify MAC address table behaviour",
+      "Configure inter-VLAN routing on Branch-R1 using router-on-a-stick",
+      "Observe and document the ARP process across VLANs in simulation mode",
+      "Configure per-VLAN DHCP pools on Branch-R1 and verify automatic address assignment",
+      "Analyse TCP and UDP behaviour in the branch network context",
+      "Perform full initial configuration of Branch-R1 and Branch-SW1 via Cisco IOS CLI including SSH",
+      "Verify end-to-end connectivity using ping, traceroute, and show commands",
+    ],
+
+    tools: [
+      { name: "Cisco Packet Tracer",           purpose: "Network simulation: VLANs, routing, DHCP, SSH" },
+      { name: "Cisco IOS CLI",                 purpose: "Full router and switch configuration" },
+      { name: "Packet Tracer Simulation Mode", purpose: "Observing ARP, TCP, and inter-VLAN packet flow" },
+      { name: "ICMP Ping and Traceroute",      purpose: "End-to-end and cross-VLAN connectivity verification" },
+    ],
+
+    skills: [
+      "Hierarchical Network Design", "Cloud and Virtualisation", "Binary and Hex",
+      "VLAN Configuration", "Trunk Links", "Inter-VLAN Routing", "Router-on-a-Stick",
+      "MAC Address Table", "Network Layer", "IPv4 Packet Structure",
+      "IPv4 Addressing", "Subnetting", "ARP", "DHCP per VLAN",
+      "DNS Configuration", "TCP", "UDP", "Port Numbers",
+      "Cisco IOS CLI", "SSH Configuration", "Device Hardening",
+      "ICMP", "Ping", "Traceroute", "Network Troubleshooting",
+    ],
+
+    parts: [
+      {
+        id:      "PART 01",
+        modules: "",
+        title:   "Hierarchical Network Design Documentation",
+        type:    "doc",
+        desc:    "Before opening Packet Tracer, the branch network was documented against the Cisco hierarchical design model. Each device was assigned to its correct layer and its role justified. This documentation serves as the design brief that all subsequent configuration follows.",
+        content: [
+          {
+            heading: "The Three-Layer Hierarchical Model",
+            body: "The Cisco hierarchical network design model organises network devices into three layers: Access, Distribution, and Core. Each layer has a specific function. The Access layer connects end devices to the network. The Distribution layer aggregates access layer connections and enforces policy. The Core layer provides high-speed transport between distribution layer devices. For a small branch like PeakRetail, the Distribution and Core layers collapse into a single device, Branch-R1 which is standard practice for branch deployments.",
+          },
+          {
+            heading: "PeakRetail Branch Device Placement",
+            body: "Access layer: Branch-SW1 (2960 switch) connects all end devices; Sales PCs, Management Admin PC, and IP phones if deployed later. It segments traffic into VLANs 10 and 20. Distribution/Core layer: Branch-R1 (1941 router) performs inter-VLAN routing, DHCP, and WAN connectivity to HQ. It is the single point of policy enforcement and routing for the branch. WAN layer: The serial or Ethernet link between Branch-R1 and HQ-R1 uses a /30 subnet (10.0.0.0/30), the standard for point-to-point WAN links.",
+          },
+          {
+            heading: "Design Decisions and Justifications",
+            body: "Two VLANs were chosen to segment Sales and Management traffic. VLAN 10 (Sales: 192.168.1.0/24) carries workstation traffic. VLAN 20 (Management: 192.168.2.0/24) carries administrative traffic and provides the switch management interface. Separating these reduces broadcast domain size, improves security, and allows different QoS policies to be applied per VLAN in the future. Router-on-a-stick was chosen for inter-VLAN routing over a Layer 3 switch because Branch-R1 is already present for WAN connectivity and adding subinterfaces costs nothing and avoids an additional device.",
+          },
+        ],
+      },
+      {
+        id:      "PART 02",
+        modules: "",
+        title:   "Cloud and Virtualization in the Branch Context",
+        type:    "doc",
+        desc:    "Documented how cloud and virtualization technologies could extend, support, or replace elements of the PeakRetail branch infrastructure.",
+        content: [
+          {
+            heading: "Virtualization at the Branch",
+            body: "Virtualization allows multiple virtual machines (VMs) to run on a single physical server. For PeakRetail, a virtualized server at HQ could host branch services; file storage, print services, and applications rather than requiring dedicated physical hardware at each branch. A Type 1 hypervisor (bare-metal, such as VMware ESXi or Microsoft Hyper-V) runs directly on hardware and provides better performance and isolation than a Type 2 hypervisor (hosted, such as VirtualBox) which runs on top of an existing OS.",
+          },
+          {
+            heading: "Cloud Services for Retail Operations",
+            body: "PeakRetail could use cloud infrastructure in three ways. Software as a Service (SaaS): retail management software, email, and collaboration tools hosted by a provider and accessed via browser, no local installation required. Platform as a Service (PaaS): development and testing environments for the IT team without purchasing physical hardware. Infrastructure as a Service (IaaS): virtual servers, storage, and networking provisioned on demand, useful for seasonal retail traffic spikes that would require over-provisioning on-premises hardware.",
+          },
+          {
+            heading: "Impact on Branch Network Design",
+            body: "Cloud adoption affects the branch network in one important way: the WAN link to HQ and to the internet becomes more critical. If branch operations depend on cloud-hosted applications, a WAN outage means an operational outage. This reinforces the design decision to connect the branch to HQ via a dedicated WAN link rather than relying solely on internet connectivity. A split-tunnelling VPN policy, routing corporate traffic to HQ and internet traffic directly could optimise both performance and cost.",
+          },
+        ],
+      },
+      {
+        id:      "PART 03",
+        modules: "",
+        title:   "Binary and Hex Applied to the Addressing Scheme",
+        type:    "doc",
+        desc:    "Documented how binary and hexadecimal number systems underpin the IPv4 addressing and VLAN design decisions for the PeakRetail branch network.",
+        content: [
+          {
+            heading: "Binary and IPv4 Addressing",
+            body: "Every IPv4 address is a 32-bit binary number written in dotted decimal notation for human readability. The address 192.168.1.1 in binary is 11000000.10101000.00000001.00000001. The subnet mask 255.255.255.0 in binary is 11111111.11111111.11111111.00000000. The ones in the subnet mask indicate the network portion and the zeros indicate the host portion. Understanding binary is essential for subnetting: a /24 mask means 24 bits are the network portion, leaving 8 bits for hosts, giving 2^8 - 2 = 254 usable host addresses.",
+          },
+          {
+            heading: "Subnetting the PeakRetail Branch",
+            body: "Three subnets were required: VLAN 10 Sales (192.168.1.0/24: 254 hosts), VLAN 20 Management (192.168.2.0/24: 254 hosts), and WAN link (10.0.0.0/30 : 2 hosts). The /30 mask (255.255.255.252) in binary is 11111111.11111111.11111111.11111100, only 2 bits for hosts, giving exactly 2 usable addresses. This is the standard for point-to-point WAN links because it wastes no addresses.",
+          },
+          {
+            heading: "Hexadecimal and MAC Addresses",
+            body: "MAC addresses are 48-bit numbers written in hexadecimal (e.g. 00:1A:2B:3C:4D:5E). Each hexadecimal digit represents 4 binary bits, making a MAC address 12 hex digits. Hex is used in networking because it is more compact than binary and maps cleanly to 4-bit groups. The first three octets of a MAC address are the OUI (Organisationally Unique Identifier) assigned to the manufacturer. The last three octets are the device-specific identifier assigned by the manufacturer.",
+          },
+        ],
+      },
+      {
+        id:      "PART 04",
+        modules: "",
+        title:   "VLAN Configuration and Ethernet Switching",
+        type:    "lab",
+        desc:    "Configured VLANs 10 and 20 on Branch-SW1, assigned access ports to the correct VLANs, and configured the trunk link to Branch-R1. Verified MAC address table behaviour by generating traffic and observing which MACs were learned on which ports and VLANs.",
+        code: `Branch-SW1> enable
+Branch-SW1# configure terminal
+Branch-SW1(config)# hostname Branch-SW1
+
+-- Create VLANs
+Branch-SW1(config)# vlan 10
+Branch-SW1(config-vlan)# name SALES
+Branch-SW1(config-vlan)# exit
+Branch-SW1(config)# vlan 20
+Branch-SW1(config-vlan)# name MANAGEMENT
+Branch-SW1(config-vlan)# exit
+
+-- Assign access ports
+Branch-SW1(config)# interface FastEthernet0/1
+Branch-SW1(config-if)# switchport mode access
+Branch-SW1(config-if)# switchport access vlan 10
+Branch-SW1(config-if)# exit
+
+Branch-SW1(config)# interface FastEthernet0/2
+Branch-SW1(config-if)# switchport mode access
+Branch-SW1(config-if)# switchport access vlan 10
+Branch-SW1(config-if)# exit
+
+Branch-SW1(config)# interface FastEthernet0/3
+Branch-SW1(config-if)# switchport mode access
+Branch-SW1(config-if)# switchport access vlan 20
+Branch-SW1(config-if)# exit
+
+-- Configure trunk to router
+Branch-SW1(config)# interface GigabitEthernet0/1
+Branch-SW1(config-if)# switchport mode trunk
+Branch-SW1(config-if)# exit
+
+Branch-SW1(config)# end
+Branch-SW1# copy running-config startup-config 
+Destination filename [startup-config]? 
+Building configuration...
+[OK]
+
+-- Verify VLANs
+Branch-SW1# show vlan brief
+
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/4, Fa0/5, Fa0/6, Fa0/7
+                                                Fa0/8, Fa0/9, Fa0/10, Fa0/11
+                                                Fa0/12, Fa0/13, Fa0/14, Fa0/15
+                                                Fa0/16, Fa0/17, Fa0/18, Fa0/19
+                                                Fa0/20, Fa0/21, Fa0/22, Fa0/23
+                                                Fa0/24, Gig0/1, Gig0/2
+10   SALES                            active    Fa0/1, Fa0/2
+20   MANAGEMENT                       active    Fa0/3
+1002 fddi-default                     active    
+1003 token-ring-default               active    
+1004 fddinet-default                  active    
+1005 trnet-default                    active
+
+-- MAC address table after traffic
+Branch-SW1# show mac address-table 
+          Mac Address Table
+-------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       --------    -----
+
+   1    0001.c9d5.6601    DYNAMIC     Gig0/1
+  10    0001.c9d5.6601    DYNAMIC     Gig0/1
+  10    000b.be64.79ed    DYNAMIC     Fa0/2
+  10    00e0.b07e.eba0    DYNAMIC     Fa0/1
+  20    0001.c9d5.6601    DYNAMIC     Gig0/1
+  20    0060.4797.38e5    DYNAMIC     Fa0/3`, 
+      },
+      {
+        id:      "PART 05",
+        modules: "",
+        title:   "Inter-VLAN Routing and IPv4 Addressing",
+        type:    "lab",
+        desc:    "Configured router-on-a-stick on Branch-R1 to enable inter-VLAN routing between VLAN 10 and VLAN 20. Created subinterfaces on G0/0 for each VLAN with 802.1Q encapsulation. Without this configuration, devices on VLAN 10 cannot communicate with devices on VLAN 20 even though they connect to the same physical switch.",
+        code: `Branch-R1> enable
+Branch-R1# configure terminal
+Branch-R1(config)# hostname Branch-R1
+
+-- Subinterface for VLAN 10 (Sales)
+Branch-R1(config)# interface GigabitEthernet0/0.10
+Branch-R1(config-subif)# encapsulation dot1Q 10
+Branch-R1(config-subif)# ip address 192.168.1.1 255.255.255.0
+Branch-R1(config-subif)# exit
+
+-- Subinterface for VLAN 20 (Management)
+Branch-R1(config)# interface GigabitEthernet0/0.20
+Branch-R1(config-subif)# encapsulation dot1Q 20
+Branch-R1(config-subif)# ip address 192.168.2.1 255.255.255.0
+Branch-R1(config-subif)# exit
+
+-- Physical interface must be up (no IP on physical)
+Branch-R1(config)# interface GiagbitEthernet0/0
+Branch-R1(config-if)# no shutdown
+Branch-R1(config-if)# exit
+
+-- WAN interface to HQ
+Branch-R1(config)# interface Serial0/0/1
+Branch-R1(config-if)# ip address 10.0.0.2 255.255.255.252
+Branch-R1(config-if)# no shutdown
+Branch-R1(config-if)# exit
+
+-- Default route to HQ
+Branch-R1(config)# ip route 0.0.0.0 0.0.0.0 10.0.0.1
+Branch-R1(config)# end
+
+Branch-R1# show ip interface brief
+Interface              IP-Address      OK? Method Status                Protocol 
+GigabitEthernet0/0     unassigned      YES unset  up                    up 
+GigabitEthernet0/0.10  192.168.1.1     YES manual up                    up 
+GigabitEthernet0/0.20  192.168.2.1     YES manual up                    up 
+GigabitEthernet0/1     unassigned      YES unset  administratively down down 
+Serial0/0/0            unassigned      YES unset  administratively down down 
+Serial0/0/1            10.0.0.2        YES manual up                    up 
+Vlan1                  unassigned      YES unset  administratively down down
+
+Branch-R1# show ip route
+Gateway of last resort is 10.0.0.1 to network 0.0.0.0
+
+     10.0.0.0/8 is variably subnetted, 2 subnets, 2 masks
+C       10.0.0.0/30 is directly connected, Serial0/0/1
+L       10.0.0.2/32 is directly connected, Serial0/0/1
+     192.168.1.0/24 is variably subnetted, 2 subnets, 2 masks
+C       192.168.1.0/24 is directly connected, GigabitEthernet0/0.10
+L       192.168.1.1/32 is directly connected, GigabitEthernet0/0.10
+     192.168.2.0/24 is variably subnetted, 2 subnets, 2 masks
+C       192.168.2.0/24 is directly connected, GigabitEthernet0/0.20
+L       192.168.2.1/32 is directly connected, GigabitEthernet0/0.20
+S*   0.0.0.0/0 [1/0] via 10.0.0.1`,
+      },
+      {
+        id:      "PART 06",
+        modules: "",
+        title:   "ARP Process Across VLANs",
+        type:    "lab",
+        desc:    "Used Packet Tracer simulation mode to observe the ARP process when Sales-PC1 communicates with Admin-PC on VLAN 20. Because they are on different VLANs, Sales-PC1 cannot ARP directly for Admin-PC. It must ARP for its default gateway (Branch-R1) and let the router forward the packet. This demonstrates a key behaviour difference between intra-VLAN and inter-VLAN communication.",
+        code: `ARP Process: Sales-PC1 to Admin-PC (cross-VLAN):
+
+  Step 1: Sales-PC1 checks destination 192.168.2.21
+          Not in same subnet (192.168.1.0/24)
+          Sends ARP broadcast: "Who has 192.168.1.1?" (default gateway)
+
+  Step 2: Branch-R1 subinterface G0/0.10 replies:
+          "192.168.1.1 is at 0001.c9d5.6601"
+          Sales-PC1 caches this MAC
+
+  Step 3: Sales-PC1 sends packet to Branch-R1 MAC
+          Branch-R1 receives, checks routing table
+          Destination 192.168.2.21 - matched to G0/0.20
+
+  Step 4: Branch-R1 ARPs on VLAN 20:
+          "Who has 192.168.2.21?"
+          Admin-PC replies with its MAC
+
+  Step 5: Branch-R1 forwards packet to Admin-PC
+          Admin-PC receives and responds
+
+-- Verify ARP tables after communication
+Sales-PC1> arp -a
+  Internet Address      Physical Address      Type
+  192.168.1.1           0001.c9d5.6601        dynamic
+
+Admin-PC> arp -a
+  Internet Address      Physical Address      Type
+  192.168.2.1           0001.c9d5.6601        dynamic`,
+      },
+      {
+        id:      "PART 07",
+        modules: "",
+        title:   "Per-VLAN DHCP and DNS Configuration",
+        type:    "lab",
+        desc:    "Configured two DHCP pools on Branch-R1, one per VLAN so that Sales and Management devices receive addresses automatically from the correct subnet. Also configured the DNS server address in each pool pointing to the HQ DNS server (10.0.0.1 side). DHCP helper addresses were not required here since Branch-R1 is the router and DHCP server for both VLANs.',",
+        code: `-- Exclude static addresses from pools
+Branch-R1(config)# ip dhcp excluded-address 192.168.1.1 192.168.1.20
+Branch-R1(config)# ip dhcp excluded-address 192.168.2.1 192.168.2.20
+
+-- DHCP pool for VLAN 10 Sales
+Branch-R1(config)# ip dhcp pool VLAN10_SALES
+Branch-R1(dhcp-config)# network 192.168.1.0 255.255.255.0
+Branch-R1(dhcp-config)# default-router 192.168.1.1
+Branch-R1(dhcp-config)# dns-server 10.0.0.1
+Branch-R1(dhcp-config)# domain-name peakretail.local
+Branch-R1(dhcp-config)# exit
+
+-- DHCP pool for VLAN 20 Management
+Branch-R1(config)# ip dhcp pool VLAN20_MGMT
+Branch-R1(dhcp-config)# network 192.168.2.0 255.255.255.0
+Branch-R1(dhcp-config)# default-router 192.168.2.1
+Branch-R1(dhcp-config)# dns-server 10.0.0.1
+Branch-R1(dhcp-config)# domain-name peakretail.local
+Branch-R1(dhcp-config)# exit
+
+Branch-R1(config)# end
+
+-- Verify after clients request addresses
+Branch-R1# show ip dhcp binding 
+IP address       Client-ID/              Lease expiration        Type
+                 Hardware address
+192.168.1.21     00E0.B07E.EBA0           --                     Automatic
+192.168.1.22     000B.BE64.79ED           --                     Automatic
+192.168.2.21     0060.4797.38E5           --                     Automatic
+
+Branch-R1# show ip dhcp pool
+
+Pool VLAN10_SALES :
+ Utilization mark (high/low)    : 100 / 0
+ Subnet size (first/next)       : 0 / 0 
+ Total addresses                : 254
+ Leased addresses               : 2
+ Excluded addresses             : 2
+ Pending event                  : none
+
+ 1 subnet is currently in the pool
+ Current index        IP address range                    Leased/Excluded/Total
+ 192.168.1.1          192.168.1.1      - 192.168.1.254     2    / 2     / 254
+
+Pool VLAN20_MGMT :
+ Utilization mark (high/low)    : 100 / 0
+ Subnet size (first/next)       : 0 / 0 
+ Total addresses                : 254
+ Leased addresses               : 1
+ Excluded addresses             : 2
+ Pending event                  : none
+
+ 1 subnet is currently in the pool
+ Current index        IP address range                    Leased/Excluded/Total
+ 192.168.2.1          192.168.2.1      - 192.168.2.254     1    / 2     / 254`,
+      },
+      {
+        id:      "PART 08",
+        modules: "",
+        title:   "TCP and UDP in the Branch Context",
+        type:    "doc",
+        desc:    "Documented how TCP and UDP operate in the PeakRetail branch network, mapped to specific traffic flows observed in simulation mode.",
+        content: [
+          {
+            heading: "TCP in the Branch Network",
+            body: "TCP is used for any traffic where reliable delivery matters. In the PeakRetail branch, TCP carries: HTTP/HTTPS traffic from Sales PCs browsing the retail management system at HQ (port 80/443), SSH management sessions from the Admin PC to Branch-R1 and Branch-SW1 (port 22), and FTP transfers of sales reports to HQ (ports 20/21). The TCP three-way handshake (SYN, SYN-ACK, ACK) was observed in Packet Tracer simulation mode when the Admin PC initiated an SSH session to Branch-R1, confirming the connection-oriented nature of the protocol before any data was exchanged.",
+          },
+          {
+            heading: "UDP in the Branch Network",
+            body: "UDP is used for traffic where low latency matters more than guaranteed delivery. In the PeakRetail branch, UDP carries: DHCP discovery and offer messages (ports 67/68) when Sales PCs and Admin PC request IP addresses, DNS queries (port 53) when devices resolve peakretail.local hostnames, and NTP time synchronisation (port 123) keeping all branch devices synchronised with the HQ time server. The connectionless nature of UDP was confirmed in simulation mode. DHCP DISCOVER was broadcast without any prior handshake.",
+          },
+          {
+            heading: "Port Numbers and Traffic Identification",
+            body: "Port numbers allow a device to run multiple network services simultaneously. When Sales-PC1 connects to the HQ retail system via HTTPS (TCP 443) and simultaneously sends a DNS query (UDP 53), the transport layer uses source and destination port numbers to keep these flows separate. The combination of source IP, source port, destination IP, destination port, and protocol forms a unique socket that identifies each conversation. In a security context, port numbers are what ACLs and firewalls use to permit or block specific types of traffic.",
+          },
+        ],
+      },
+      {
+        id:      "PART 09",
+        modules: "",
+        title:   "Full IOS CLI Configuration with SSH",
+        type:    "lab",
+        desc:    "Performed complete initial configuration of both Branch-R1 and Branch-SW1 via Cisco IOS CLI. Configuration covers hostname, MOTD banner, encrypted passwords, console and VTY line security, and SSH for secure remote management. SSH replaces Telnet which transmits credentials in plaintext. In a retail environment where the WAN link could be monitored, SSH is mandatory.",
+        code: `-- Branch-R1 full initial configuration
+Branch-R1(config)# hostname Branch-R1
+Branch-R1(config)# banner motd # PeakRetail Ltd - Branch Router. Authorised access only. #
+Branch-R1(config)# enable secret PeakR1!2024
+Branch-R1(config)# service password-encryption
+
+Branch-R1(config)# line console 0
+Branch-R1(config-line)# password Console!2024
+Branch-R1(config-line)# login
+Branch-R1(config-line)# logging synchronous
+Branch-R1(config-line)# exit
+
+Branch-R1(config)# line vty 0 15
+Branch-R1(config-line)# transport input ssh
+Branch-R1(config-line)# login local
+Branch-R1(config-line)# exit
+
+-- SSH configuration
+Branch-R1(config)# ip domain-name peakretail.local
+Branch-R1(config)# username admin secret SSH!Admin2024
+Branch-R1(config)# crypto key generate rsa
+How many bits in the modulus [512]: 1024
+% Generating 1024 bit RSA keys, keys will be non-exportable...[OK]
+Branch-R1(config)# ip ssh version 2
+Branch-R1(config)# end
+Branch-R1# copy running-config startup-config 
+Destination filename [startup-config]? 
+Building configuration...
+[OK]
+
+-- Branch-SW1 full initial configuration
+Branch-SW1(config)# hostname Branch-SW1
+Branch-SW1(config)# banner motd # PeakRetail Ltd - Branch Switch. Authorised access only. #
+Branch-SW1(config)# enable secret PeakSW1!2024
+Branch-SW1(config)# service password-encryption
+
+Branch-SW1(config)# line console 0
+Branch-SW1(config-line)# password Console!2024
+Branch-SW1(config-line)# login
+Branch-SW1(config-line)# exit
+
+Branch-SW1(config)# line vty 0 15
+Branch-SW1(config-line)# transport input ssh
+Branch-SW1(config-line)# login local
+Branch-SW1(config-line)# exit
+
+Branch-SW1(config)# ip domain-name peakretail.local
+Branch-SW1(config)# username admin secret SSH!Admin2024
+Branch-SW1(config)# crypto key generate rsa
+How many bits in the modulus [512]: 1024
+% Generating 1024 bit RSA keys, keys will be non-exportable...[OK]
+Branch-SW1(config)# ip ssh version 2
+
+-- Switch management IP on VLAN 20
+Branch-SW1(config)# interface vlan 20
+Branch-SW1(config-if)# ip address 192.168.2.2 255.255.255.0
+Branch-SW1(config-if)# no shutdown
+Branch-SW1(config-if)# exit
+Branch-SW1(config)# ip default-gateway 192.168.2.1
+Branch-SW1(config)# end
+Branch-SW1# copy running-config startup-config 
+Destination filename [startup-config]? 
+Building configuration...
+[OK]
+
+-- Verify SSH from Admin-PC
+Admin-PC> ssh -l admin 192.168.2.1
+
+Password: 
+
+ PeakRetail Ltd - Branch Router. Authorized access only. 
+
+Branch-R1>`,
+      },
+      {
+        id:      "PART 10",
+        modules: "Module 12 -- ICMP and Connectivity Testing",
+        title:   "Full Branch Network Verification",
+        type:    "lab",
+        desc:    "Ran a complete verification matrix using ping, traceroute, and show commands. Tested intra-VLAN, inter-VLAN, WAN, and management connectivity. Used traceroute to confirm correct routing paths. Verified DHCP bindings, VLAN assignments, routing table, and SSH access. Documented all results as the final proof of a fully operational branch network.",
+        code: `-- Intra-VLAN connectivity (VLAN 10)
+Sales-PC1> ping 192.168.1.22    <- Sales-PC2    SUCCESS
+
+-- Inter-VLAN connectivity
+Sales-PC1> ping 192.168.2.21    <- Admin-PC          SUCCESS
+Sales-PC1> ping 192.168.2.1     <- Branch-R1 VLAN20  SUCCESS
+
+-- WAN connectivity
+Sales-PC1> ping 10.0.0.1        <- HQ Router   SUCCESS
+Admin-PC>  ping 10.0.0.1        <- HQ Router   SUCCESS
+
+-- Management connectivity
+Admin-PC>  ping 192.168.2.2     <- Branch-SW1  SUCCESS
+
+-- Traceroute Sales-PC1 to HQ
+Sales-PC1> tracert 10.0.0.1
+
+Tracing route to 10.0.0.1 over a maximum of 30 hops: 
+
+  1   1 ms      0 ms      0 ms      192.168.1.1
+  2   3 ms      3 ms      3 ms      10.0.0.1
+
+Trace complete.
+
+-- VLAN verification
+Branch-SW1# show vlan brief
+
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/4, Fa0/5, Fa0/6, Fa0/7
+                                                Fa0/8, Fa0/9, Fa0/10, Fa0/11
+                                                Fa0/12, Fa0/13, Fa0/14, Fa0/15
+                                                Fa0/16, Fa0/17, Fa0/18, Fa0/19
+                                                Fa0/20, Fa0/21, Fa0/22, Fa0/23
+                                                Fa0/24, Gig0/2
+10   SALES                            active    Fa0/1, Fa0/2
+20   MANAGEMENT                       active    Fa0/3
+1002 fddi-default                     active    
+1003 token-ring-default               active    
+1004 fddinet-default                  active    
+1005 trnet-default                    active
+
+-- Trunk verification
+Branch-SW1# show interface GigabitEthernet0/1 switchport | section trunk
+Administrative Mode: trunk
+Operational Mode: trunk
+Administrative private-vlan trunk native VLAN: none
+Administrative private-vlan trunk encapsulation: dot1q
+Administrative private-vlan trunk normal VLANs: none
+Administrative private-vlan trunk private VLANs: none
+
+-- Routing table
+Branch-R1# show ip route
+Gateway of last resort is 10.0.0.1 to network 0.0.0.0
+
+     10.0.0.0/8 is variably subnetted, 2 subnets, 2 masks
+C       10.0.0.0/30 is directly connected, Serial0/0/1
+L       10.0.0.2/32 is directly connected, Serial0/0/1
+     192.168.1.0/24 is variably subnetted, 2 subnets, 2 masks
+C       192.168.1.0/24 is directly connected, GigabitEthernet0/0.10
+L       192.168.1.1/32 is directly connected, GigabitEthernet0/0.10
+     192.168.2.0/24 is variably subnetted, 2 subnets, 2 masks
+C       192.168.2.0/24 is directly connected, GigabitEthernet0/0.20
+L       192.168.2.1/32 is directly connected, GigabitEthernet0/0.20
+S*   0.0.0.0/0 [1/0] via 10.0.0.1
+
+-- DHCP bindings
+Branch-R1# show ip dhcp binding
+IP address       Client-ID/              Lease expiration        Type
+                 Hardware address
+192.168.1.21     00E0.B07E.EBA0           --                     Automatic
+192.168.1.22     000B.BE64.79ED           --                     Automatic
+192.168.2.21     0060.4797.38E5           --                     Automatic
+
+-- SSH version
+Branch-R1# show ip ssh
+SSH Enabled - version 2.0
+Authentication timeout: 120 secs; Authentication retries: 3`,
+      },
+    ],
+
+    results: [
+      { type: "success", text: "VLANs 10 and 20 correctly configured on Branch-SW1. show vlan brief confirmed correct port assignments." },
+      { type: "success", text: "Inter-VLAN routing working. Sales-PC1 can ping Admin-PC across VLANs via router-on-a-stick." },
+      { type: "success", text: "DHCP pools assigned correct addresses per VLAN. All three clients received addresses from the correct pool." },
+      { type: "success", text: "WAN connectivity confirmed as both VLANs can reach HQ router at 10.0.0.1." },
+      { type: "success", text: "SSH v2 configured on both Branch-R1 and Branch-SW1. Admin-PC successfully authenticated via SSH." },
+      { type: "success", text: "Traceroute confirmed correct path: Sales-PC1 to HQ traverses Branch-R1 subinterface then WAN link." },
+      { type: "warning", text: "Inter-VLAN pings failed initially as GigabitEthernet0/0 physical interface was left in shutdown state." },
+      { type: "fix",     text: "Added no shutdown to the physical G0/0 interface. The subinterfaces came up immediately and pings succeeded." },
+      { type: "warning", text: "SSH key generation failed on Branch-SW1 because domain name had not been configured before the crypto key command." },
+      { type: "fix",     text: "Added ip domain-name peakretail.local before rerunning crypto key generate rsa and SSH came up." },
+      { type: "warning", text: "Admin-PC received address in VLAN 10 pool instead of VLAN 20 because port Fa0/3 was assigned to VLAN 1 by default." },
+      { type: "fix",     text: "Corrected with switchport access vlan 20 on Fa0/3. Admin-PC renewed and received a 192.168.2.21 address." },
+    ],
+
+    lessons: [
+      {
+        title: "Router-on-a-stick requires the physical interface to be up",
+        text:  "Subinterfaces only work if the parent physical interface is active. Forgetting no shutdown on G0/0 while the subinterfaces were correctly configured meant all inter-VLAN routing failed silently. The interfaces showed up in show ip interface brief as down. Physical interface state is the first thing to check when subinterfaces are not working.",
+      },
+      {
+        title: "SSH configuration has a strict dependency order",
+        text:  "The crypto key generate rsa command requires a domain name to be set first. If the domain name is missing, the key generation fails without a clear error message. The correct order is: hostname, then ip domain-name, then username, then crypto key generate, then ip ssh version 2. Skipping or reordering any step breaks the chain.",
+      },
+      {
+        title: "VLAN port assignments are not automatic",
+        text:  "Every port on a Cisco switch defaults to VLAN 1. A device plugged into any port will be in VLAN 1 unless explicitly assigned with switchport access vlan. This is a common misconfiguration in real deployments; a new device is connected, appears online, but is in the wrong VLAN and cannot reach the intended resources.",
+      },
+      {
+        title: "ARP across VLANs is fundamentally different from intra-VLAN ARP",
+        text:  "Within a VLAN, a device ARPs directly for the destination. Across VLANs, it ARPs for the default gateway and lets the router handle delivery. Understanding this distinction is essential for troubleshooting inter-VLAN communication failures. If ARP for the gateway is failing, no cross-VLAN traffic will work regardless of routing configuration.",
+      },
+      {
+        title: "DHCP pools must match the VLAN subnets exactly",
+        text:  "The DHCP pool network statement must match the subnet of the subinterface serving that VLAN. If the pool is misconfigured, the router either assigns addresses from the wrong subnet or refuses to respond to DHCP requests entirely. Always verify pool configuration with show ip dhcp pool immediately after setup.",
+      },
+    ],
+
+    githubLink:     "https://github.com/oziomainya/branch-network",   // REPLACE with GitHub repo URL when ready
+    portfolioLink:  "https://oziomainya.github.io",   // REPLACE with portfolio URL when ready
+    authorLinkedIn: "https://linkedin.com/in/ozioma-inya-a46327304",   // REPLACE with LinkedIn URL when ready
+
+  };
+
+  /*
+  ==============================================================
+  DO NOT EDIT BELOW THIS COMMENT BLOCK
+  ==============================================================
+  */
+
+</script>
+
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#050505;--bg-2:#0c0c0c;--bg-card:#0f0f0f;--bg-code:#080808;
+  --green:#00ff41;--green-d:#00b32d;--green-dk:#001f08;
+  --cyan:#00e5ff;--cyan-d:#00a8c0;
+  --amber:#ffd600;--red:#ff4444;--text:#ccffcc;
+  --text-2:#5a8f5a;--text-m:#2a4a2a;
+  --border:rgba(0,255,65,.09);--border-s:rgba(0,255,65,.22);
+  --font:'JetBrains Mono','Courier New',monospace
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.7;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,65,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,65,.02) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.1) 2px,rgba(0,0,0,.1) 4px);pointer-events:none;z-index:999}
+nav{position:fixed;top:0;width:100%;z-index:100;background:rgba(5,5,5,.97);border-bottom:1px solid var(--border);padding:0 2.5rem;height:56px;display:flex;align-items:center;justify-content:space-between}
+.nav-back{color:var(--text-2);text-decoration:none;font-size:11px;letter-spacing:.1em;transition:color .2s}
+.nav-back::before{content:'<- ';color:var(--text-m)}
+.nav-back:hover{color:var(--green)}
+.nav-id{color:var(--text-m);font-size:11px;letter-spacing:.1em}
+main{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:6rem 2.5rem 5rem}
+.proj-header{margin-bottom:4rem;padding-bottom:2.5rem;border-bottom:1px solid var(--border)}
+.proj-meta{display:flex;align-items:center;gap:.65rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.meta-cat{font-size:9px;letter-spacing:.15em;padding:3px 10px;border-radius:2px;background:var(--green-dk);color:var(--green);border:1px solid rgba(0,255,65,.2)}
+.meta-status{font-size:9px;letter-spacing:.12em;display:inline-flex;align-items:center;gap:5px}
+.meta-status::before{content:'';width:6px;height:6px;border-radius:50%;animation:pulse 2s ease-in-out infinite}
+.meta-status.live{color:var(--green)}.meta-status.live::before{background:var(--green)}
+.meta-status.wip{color:var(--cyan)}.meta-status.wip::before{background:var(--cyan)}
+.meta-status.soon{color:var(--amber)}.meta-status.soon::before{background:var(--amber)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.meta-source{font-size:9px;letter-spacing:.08em;padding:3px 10px;border-radius:2px;background:rgba(0,229,255,.05);color:var(--cyan-d);border:1px solid rgba(0,229,255,.15)}
+.meta-date{font-size:10px;color:var(--text-m)}
+.proj-title{font-size:clamp(1.6rem,3.5vw,2.4rem);font-weight:700;color:var(--green);letter-spacing:-.02em;margin-bottom:1rem;line-height:1.2}
+.proj-overview{font-size:13px;color:var(--text-2);line-height:2;max-width:640px}
+.proj-actions{display:flex;gap:.75rem;margin-top:2rem;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1.2rem;font-family:var(--font);font-size:11px;letter-spacing:.1em;cursor:pointer;transition:all .18s;text-decoration:none;border-radius:2px}
+.btn-p{background:var(--green-dk);color:var(--green);border:1px solid rgba(0,255,65,.3)}
+.btn-p:hover{background:var(--green);color:#030d06}
+.btn-s{background:transparent;color:var(--text-2);border:1px solid var(--border-s)}
+.btn-s:hover{color:var(--cyan);border-color:rgba(0,229,255,.3)}
+.section{margin-bottom:3.5rem}
+.sh{display:flex;align-items:center;gap:1rem;margin-bottom:1.75rem;color:var(--text-2);font-size:12px;letter-spacing:.1em}
+.sh::before{content:'$';color:var(--green);font-size:14px;font-weight:700}
+.sh::after{content:'';flex:1;height:1px;background:var(--border)}
+.client-card{background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:1.5rem;margin-bottom:1rem}
+.client-row{display:flex;justify-content:space-between;font-size:11px;padding:.4rem 0;border-bottom:1px solid var(--border)}
+.client-row:last-child{border-bottom:none}
+.client-label{color:var(--text-m);letter-spacing:.08em}
+.client-val{color:var(--text-2);text-align:right;max-width:65%}
+.client-context{background:rgba(0,255,65,.03);border:1px solid rgba(0,255,65,.1);border-radius:3px;padding:.85rem 1.1rem;font-size:11px;color:var(--text-2);line-height:1.9;margin-top:.75rem}
+.client-context-label{font-size:9px;color:var(--green-d);letter-spacing:.12em;margin-bottom:.35rem}
+.obj-list{display:flex;flex-direction:column;gap:.6rem}
+.obj-item{display:flex;align-items:flex-start;gap:.75rem;background:var(--bg-card);border:1px solid var(--border);border-radius:3px;padding:.85rem 1.1rem;font-size:12px;color:var(--text-2);transition:border-color .2s}
+.obj-item:hover{border-color:var(--border-s)}
+.obj-num{color:var(--text-m);flex-shrink:0;min-width:22px}
+.tools-table{width:100%;border-collapse:collapse;font-size:12px}
+.tools-table th{text-align:left;padding:.6rem 1rem;color:var(--text-m);font-weight:400;font-size:10px;letter-spacing:.1em;border-bottom:1px solid var(--border)}
+.tools-table td{padding:.7rem 1rem;border-bottom:1px solid var(--border);color:var(--text-2)}
+.tools-table tr:last-child td{border-bottom:none}
+.tools-table tr:hover td{color:var(--text)}
+.tool-name{color:var(--green);font-weight:500}
+.tags-wrap{display:flex;flex-wrap:wrap;gap:.4rem}
+.tag{display:inline-block;padding:3px 10px;font-size:10px;border-radius:2px;letter-spacing:.04em;background:rgba(0,255,65,.06);color:var(--green-d);border:1px solid rgba(0,255,65,.14)}
+.topo-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:1.5rem;overflow-x:auto}
+.topo-diagram{font-size:11px;color:var(--green-d);line-height:2.1;white-space:pre;font-family:var(--font);margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)}
+.topo-table{width:100%;border-collapse:collapse;font-size:11px}
+.topo-table th{text-align:left;padding:.5rem .85rem;color:var(--text-m);font-weight:400;font-size:10px;letter-spacing:.1em;border-bottom:1px solid var(--border)}
+.topo-table td{padding:.6rem .85rem;border-bottom:1px solid var(--border);color:var(--text-2)}
+.topo-table tr:last-child td{border-bottom:none}
+.topo-hl{color:var(--green) !important;font-weight:500}
+.topo-ip{color:var(--cyan-d) !important}
+.topo-vlan{font-size:9px;font-weight:700;letter-spacing:.08em}
+.topo-vlan.v10{color:var(--green)}
+.topo-vlan.v20{color:var(--amber)}
+.part{background:var(--bg-card);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:1.25rem;transition:border-color .2s}
+.part:hover{border-color:var(--border-s)}
+.part-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border)}
+.part-id{font-size:9px;color:var(--text-m);letter-spacing:.15em;margin-bottom:.2rem}
+.part-modules{font-size:9px;color:var(--cyan-d);letter-spacing:.06em;margin-bottom:.4rem}
+.part-title{font-size:13px;font-weight:700;color:var(--green)}
+.part-body{padding:1rem 1.25rem}
+.part-desc{font-size:12px;color:var(--text-2);line-height:1.9;margin-bottom:.75rem}
+.part-code{background:var(--bg-code);border:1px solid rgba(0,255,65,.07);border-radius:3px;padding:1rem 1.25rem;font-size:11px;color:var(--green-d);overflow-x:auto;white-space:pre;line-height:1.8}
+.content-block{margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.content-block:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.content-heading{font-size:11px;font-weight:700;color:var(--cyan);letter-spacing:.06em;margin-bottom:.5rem}
+.content-body{font-size:12px;color:var(--text-2);line-height:2}
+.results-list{display:flex;flex-direction:column;gap:.6rem}
+.result{display:flex;align-items:flex-start;gap:.85rem;padding:.9rem 1.1rem;border-radius:3px;border:1px solid;font-size:12px;line-height:1.8}
+.result.success{background:rgba(0,255,65,.04);border-color:rgba(0,255,65,.12);color:var(--text-2)}
+.result.success .ri{color:var(--green);flex-shrink:0}
+.result.warning{background:rgba(255,214,0,.04);border-color:rgba(255,214,0,.12);color:var(--text-2)}
+.result.warning .ri{color:var(--amber);flex-shrink:0}
+.result.fix{background:rgba(0,229,255,.04);border-color:rgba(0,229,255,.12);color:var(--text-2)}
+.result.fix .ri{color:var(--cyan);flex-shrink:0}
+.result.fail{background:rgba(255,68,68,.04);border-color:rgba(255,68,68,.12);color:var(--text-2)}
+.result.fail .ri{color:var(--red);flex-shrink:0}
+.lessons-list{display:flex;flex-direction:column;gap:1rem}
+.lesson{background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:1.25rem;transition:border-color .2s}
+.lesson:hover{border-color:var(--border-s)}
+.lesson-n{font-size:9px;color:var(--text-m);letter-spacing:.15em;margin-bottom:.35rem}
+.lesson-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:.4rem}
+.lesson-text{font-size:12px;color:var(--text-2);line-height:1.9}
+.screenshots{display:flex;flex-direction:column;gap:1.5rem}
+.screenshot-item{display:flex;flex-direction:column;gap:.6rem}
+.screenshot-item img{width:100%;border-radius:4px;border:1px solid rgba(0,255,65,.1);display:block}
+.screenshot-caption{font-size:10px;color:var(--text-m);letter-spacing:.08em;padding-left:.25rem}
+.screenshot-placeholder{background:var(--bg-card);border:1px dashed rgba(0,255,65,.15);border-radius:4px;padding:2.5rem;text-align:center;font-size:11px;color:var(--text-m);letter-spacing:.05em}
+footer{position:relative;z-index:1;text-align:center;padding:2rem;border-top:1px solid var(--border);color:var(--text-m);font-size:10px;letter-spacing:.1em}
+@media(max-width:620px){main{padding:5rem 1.25rem 3rem}nav{padding:0 1.25rem}.proj-title{font-size:1.5rem}.topo-diagram{font-size:9px}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a id="nav-back" href="#" class="nav-back">Back to Portfolio</a>
+  <span class="nav-id" id="nav-id"></span>
+</nav>
+
+<main>
+  <header class="proj-header" id="proj-header"></header>
+
+  <div class="section">
+    <div class="sh">cat client_brief.txt</div>
+    <div id="client-card"></div>
+  </div>
+
+  <div class="section">
+    <div class="sh">cat objectives.txt</div>
+    <div class="obj-list" id="obj-list"></div>
+  </div>
+
+  <div class="section">
+    <div class="sh">cat tools.txt</div>
+    <table class="tools-table">
+      <thead><tr><th>TOOL / TECHNOLOGY</th><th>PURPOSE</th></tr></thead>
+      <tbody id="tools-body"></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="sh">cat skills.txt</div>
+    <div class="tags-wrap" id="tags-wrap"></div>
+  </div>
+
+  <div class="section">
+    <div class="sh">cat topology.txt</div>
+    <div class="topo-wrap">
+      <pre class="topo-diagram">  [HQ-R1: 10.0.0.1] ---------- WAN: 10.0.0.0/30
+        |
+  [Branch-R1: S0/0/1: 10.0.0.2]
+  [Branch-R1: G0/0.10: 192.168.1.1]  VLAN 10 SALES
+  [Branch-R1: G0/0.20: 192.168.2.1]  VLAN 20 MANAGEMENT
+        |  (trunk)
+  [Branch-SW1: VLAN20 mgmt: 192.168.2.2]
+     |           |            |
+  [Fa0/1]     [Fa0/2]      [Fa0/3]
+  VLAN 10     VLAN 10      VLAN 20
+  Sales-PC1   Sales-PC2    Admin-PC
+  DHCP .21    DHCP .22     DHCP .21</pre>
+      <table class="topo-table">
+        <thead><tr><th>DEVICE</th><th>INTERFACE</th><th>IP ADDRESS</th><th>VLAN</th><th>ROLE</th></tr></thead>
+        <tbody>
+          <tr><td class="topo-hl">Branch-R1</td><td>G0/0.10</td><td class="topo-ip">192.168.1.1</td><td><span class="topo-vlan v10">VLAN 10</span></td><td>Sales gateway</td></tr>
+          <tr><td class="topo-hl">Branch-R1</td><td>G0/0.20</td><td class="topo-ip">192.168.2.1</td><td><span class="topo-vlan v20">VLAN 20</span></td><td>Management gateway</td></tr>
+          <tr><td class="topo-hl">Branch-R1</td><td>S0/0/1</td><td class="topo-ip">10.0.0.2</td><td>--</td><td>WAN uplink to HQ</td></tr>
+          <tr><td class="topo-hl">Branch-SW1</td><td>VLAN 20</td><td class="topo-ip">192.168.2.2</td><td><span class="topo-vlan v20">VLAN 20</span></td><td>Switch management IP</td></tr>
+          <tr><td class="topo-hl">Sales-PC1</td><td>NIC</td><td class="topo-ip">DHCP (192.168.1.21)</td><td><span class="topo-vlan v10">VLAN 10</span></td><td>Sales workstation</td></tr>
+          <tr><td class="topo-hl">Sales-PC2</td><td>NIC</td><td class="topo-ip">DHCP (192.168.1.22)</td><td><span class="topo-vlan v10">VLAN 10</span></td><td>Sales workstation</td></tr>
+          <tr><td class="topo-hl">Admin-PC</td><td>NIC</td><td class="topo-ip">DHCP (192.168.2.21)</td><td><span class="topo-vlan v20">VLAN 20</span></td><td>Management workstation</td></tr>
+          <tr><td class="topo-hl">HQ-R1</td><td>S0/0/0</td><td class="topo-ip">10.0.0.1</td><td>--</td><td>HQ router / WAN peer</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh">cat lab_parts.txt</div>
+    <div id="parts-list"></div>
+  </div>
+
+  <div class="section">
+    <div class="sh">cat results.txt</div>
+    <div class="results-list" id="results-list"></div>
+  </div>
+
+  <!--
+  ==============================================================
+  SCREENSHOTS SECTION -- HOW TO ADD YOUR IMAGES
+  ==============================================================
+
+  FOLDER STRUCTURE:
+    networking-devices/
+    |-- index.html          (this file, renamed)
+    |-- README.md
+    |-- topology.pkt
+    +-- images/
+        |-- topology.png
+        |-- vlan-config.png
+        |-- inter-vlan-ping.png
+        |-- dhcp-bindings.png
+        |-- routing-table.png
+        |-- ssh-session.png
+        +-- full-verification.png
+
+  RECOMMENDED SCREENSHOTS:
+  - Full topology in Packet Tracer
+  - show vlan brief on Branch-SW1
+  - Inter-VLAN ping from Sales-PC1 to Admin-PC
+  - show ip dhcp binding on Branch-R1
+  - show ip route on Branch-R1
+  - SSH session from Admin-PC to Branch-R1
+  - Full ping matrix results
+
+  WHEN READY:
+  1. Delete the placeholder div below
+  2. Remove the comment markers around the screenshots block
+  3. Update src filenames to match your actual screenshot filenames
+  ==============================================================
+  -->
+
+  <div class="section">
+    <div class="sh">ls ./evidence/</div>
+
+    <div class="screenshots">
+
+      <div class="screenshot-item">
+        <img src="topology.png" alt="Branch network topology">
+        <span class="screenshot-caption">Fig 1 - PeakRetail branch topology in Cisco Packet Tracer</span>
+      </div>
+
+      <div class="screenshot-item">
+        <img src="vlan-brief.png" alt="VLAN configuration">
+        <span class="screenshot-caption">Fig 2 - show vlan brief confirming VLAN 10 and VLAN 20 assignments</span>
+      </div>
+
+      <div class="screenshot-item">
+        <img src="inter-vlan-ping.png" alt="Inter-VLAN ping">
+        <span class="screenshot-caption">Fig 3 - Sales-PC1 pinging Admin-PC across VLANs successfully</span>
+      </div>
+
+      <div class="screenshot-item">
+        <img src="dhcp-binding.png" alt="DHCP bindings">
+        <span class="screenshot-caption">Fig 4 - show ip dhcp binding showing per-VLAN address assignments</span>
+      </div>
+
+      <div class="screenshot-item">
+        <img src="routing-table.png" alt="Routing table">
+        <span class="screenshot-caption">Fig 5 - show ip route on Branch-R1 showing subinterface routes</span>
+      </div>
+
+      <div class="screenshot-item">
+        <img src="ssh-session.png" alt="SSH session">
+        <span class="screenshot-caption">Fig 6 - Admin-PC SSH session to Branch-R1 using SSH v2</span>
+      </div>
+
+      <div class="screenshot-item">
+        <img src="ping-statistics.png" alt="Full verification">
+        <span class="screenshot-caption">Fig 7 - Complete ping matrix confirming all connectivity</span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="section">
+    <div class="sh">cat lessons_learned.txt</div>
+    <div class="lessons-list" id="lessons-list"></div>
+  </div>
+
+</main>
+
+<footer id="footer"></footer>
+
+<script>
+var sl = { soon:'COMING SOON', wip:'IN PROGRESS', live:'LIVE' };
+var ri = { success:'v', warning:'!', fix:'+', fail:'x' };
+
+if(PROJECT.portfolioLink) document.getElementById('nav-back').href = PROJECT.portfolioLink;
+document.getElementById('nav-id').textContent = 'PEAKRETAIL LTD: BRANCH NETWORK DEPLOYMENT';
+
+var gh  = PROJECT.githubLink    ? '<a href="' + PROJECT.githubLink + '" target="_blank" class="btn btn-p">View on GitHub</a>' : '';
+var pfl = PROJECT.portfolioLink ? '<a href="' + PROJECT.portfolioLink + '" class="btn btn-s">Back to Portfolio</a>' : '';
+document.getElementById('proj-header').innerHTML =
+  '<div class="proj-meta">' +
+    '<span class="meta-cat">NETWORKING</span>' +
+    '<span class="meta-status ' + PROJECT.status + '">' + (sl[PROJECT.status] || PROJECT.status.toUpperCase()) + '</span>' +
+    '<span class="meta-source">CISCO NETWORKING DEVICES AND INITIAL CONFIGURATION · JUNIOR CYBERSECURITY ANALYST PATH</span>' +
+    '<span class="meta-date">' + PROJECT.date + ' by ' + PROJECT.author + '</span>' +
+  '</div>' +
+  '<h1 class="proj-title">' + PROJECT.title + '</h1>' +
+  '<p class="proj-overview">' + PROJECT.overview + '</p>' +
+  ((gh || pfl) ? '<div class="proj-actions">' + gh + pfl + '</div>' : '');
+
+var cc = document.getElementById('client-card');
+cc.innerHTML =
+  '<div class="client-card">' +
+    '<div class="client-row"><span class="client-label">CLIENT</span><span class="client-val">' + PROJECT.client.name + '</span></div>' +
+    '<div class="client-row"><span class="client-label">INDUSTRY</span><span class="client-val">' + PROJECT.client.industry + '</span></div>' +
+    '<div class="client-row"><span class="client-label">SITE</span><span class="client-val">' + PROJECT.client.site + '</span></div>' +
+    '<div class="client-row"><span class="client-label">TASK</span><span class="client-val">' + PROJECT.client.task + '</span></div>' +
+  '</div>' +
+  '<div class="client-context"><div class="client-context-label">DEPLOYMENT CONTEXT</div>' + PROJECT.client.context + '</div>';
+
+var ol = document.getElementById('obj-list');
+PROJECT.objectives.forEach(function(o, i) {
+  ol.innerHTML += '<div class="obj-item"><span class="obj-num">' + String(i+1).padStart(2,'0') + '.</span><span>' + o + '</span></div>';
+});
+
+var tb = document.getElementById('tools-body');
+PROJECT.tools.forEach(function(t) {
+  tb.innerHTML += '<tr><td class="tool-name">' + t.name + '</td><td>' + t.purpose + '</td></tr>';
+});
+
+var tw = document.getElementById('tags-wrap');
+PROJECT.skills.forEach(function(s) {
+  tw.innerHTML += '<span class="tag">' + s + '</span>';
+});
+
+var pl = document.getElementById('parts-list');
+PROJECT.parts.forEach(function(p) {
+  var body = '';
+  if (p.type === 'lab') {
+    body = '<div class="part-desc">' + p.desc + '</div>';
+    if (p.code) body += '<pre class="part-code">' + p.code + '</pre>';
+  } else {
+    body = '<div class="part-desc">' + p.desc + '</div>';
+    if (p.content) {
+      p.content.forEach(function(c) {
+        body += '<div class="content-block"><div class="content-heading">' + c.heading + '</div><div class="content-body">' + c.body + '</div></div>';
+      });
+    }
+  }
+  pl.innerHTML +=
+    '<div class="part">' +
+      '<div class="part-header">' +
+        '<div class="part-id">' + p.id + '</div>' +
+        '<div class="part-modules">' + p.modules + '</div>' +
+        '<div class="part-title">' + p.title + '</div>' +
+      '</div>' +
+      '<div class="part-body">' + body + '</div>' +
+    '</div>';
+});
+
+var rl = document.getElementById('results-list');
+PROJECT.results.forEach(function(r) {
+  rl.innerHTML += '<div class="result ' + r.type + '"><span class="ri">' + (ri[r.type] || '.') + '</span><span>' + r.text + '</span></div>';
+});
+
+var ll = document.getElementById('lessons-list');
+PROJECT.lessons.forEach(function(l, i) {
+  ll.innerHTML +=
+    '<div class="lesson">' +
+      '<div class="lesson-n">LESSON ' + String(i+1).padStart(2,'0') + '</div>' +
+      '<div class="lesson-title">' + l.title + '</div>' +
+      '<div class="lesson-text">' + l.text + '</div>' +
+    '</div>';
+});
+
+var lnk = PROJECT.authorLinkedIn
+  ? '<a href="' + PROJECT.authorLinkedIn + '" style="color:var(--green-d);text-decoration:none">' + PROJECT.author + '</a>'
+  : PROJECT.author;
+document.getElementById('footer').innerHTML =
+  '<p>' + lnk + ' &nbsp;.&nbsp; NETWORKING PROJECT &nbsp;.&nbsp; CISCO NETWORKING DEVICES AND INITIAL CONFIGURATION &nbsp;.&nbsp; <span style="color:var(--green)">LIVE</span></p>';
+</script>
+</body>
+</html>
